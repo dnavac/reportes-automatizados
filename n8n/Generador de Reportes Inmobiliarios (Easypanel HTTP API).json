@@ -1,0 +1,299 @@
+{
+  "name": "Generador de Reportes Inmobiliarios (Easypanel HTTP API)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "id": "1aa23d18-8cb2-45fc-b00d-35a8820adf3e",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -208,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT estado, COUNT(*) as cantidad FROM leads WHERE fecha >= current_date - interval '7 days' GROUP BY estado;",
+        "options": {}
+      },
+      "id": "b4d131ee-247e-4246-94a4-34ffb17a6b1e",
+      "name": "Query Leads Semana",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "ZVJ5XxCR48uUFqNE",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT estado, COUNT(*) as cantidad, AVG(precio) as precio_promedio FROM propiedades GROUP BY estado;",
+        "options": {}
+      },
+      "id": "3db537a5-8ff0-4111-98fe-03623d90bd14",
+      "name": "Query Propiedades",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        208
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "ZVJ5XxCR48uUFqNE",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "id": "35b452df-ff35-4715-b4ec-93c8032d3f39",
+      "name": "Merge Queries",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        208,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n-python-flask-api.tarlth.easypanel.host/generar-reporte",
+        "options": {}
+      },
+      "id": "c01edf9f-5eaf-4fa9-a0c1-d7925572373a",
+      "name": "Generar Reporte API (Python)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        416,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "5675073984",
+        "text": "=Reporte generado desde el {{ $now.minus({ days: 7 }).setLocale('es').toFormat(\"d 'de' MMMM 'de' yyyy\") }} hasta el {{ $now.setLocale('es').toFormat(\"d 'de' MMMM 'de' yyyy\") }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        912,
+        112
+      ],
+      "id": "4c2b61b7-baba-4417-989d-4498da837235",
+      "name": "Send a text message",
+      "webhookId": "991448f6-07d5-44a5-b586-a3d58fa93f91",
+      "credentials": {
+        "telegramApi": {
+          "id": "dSLSQGhMewcesB15",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendDocument",
+        "chatId": "5675073984",
+        "binaryData": true,
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        656,
+        112
+      ],
+      "id": "98cadd0f-b054-4dc8-a2e2-12262d9938c7",
+      "name": "Send a document",
+      "webhookId": "bd3cc005-4cc7-4a4a-9ced-9a00edd3e46a",
+      "credentials": {
+        "telegramApi": {
+          "id": "dSLSQGhMewcesB15",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Query Propiedades": [
+      {
+        "json": {
+          "estado": "Reservada",
+          "cantidad": "11",
+          "precio_promedio": "669831910.27272727"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "estado": "Disponible",
+          "cantidad": "21",
+          "precio_promedio": "675922063.14285714"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "estado": "Vendida",
+          "cantidad": "18",
+          "precio_promedio": "702065008.55555556"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Query Leads Semana": [
+      {
+        "json": {
+          "estado": "Cerrado",
+          "cantidad": "43"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "estado": "Nuevo",
+          "cantidad": "55"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "estado": "Contactado",
+          "cantidad": "52"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Query Leads Semana",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Query Propiedades",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Leads Semana": {
+      "main": [
+        [
+          {
+            "node": "Merge Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Propiedades": {
+      "main": [
+        [
+          {
+            "node": "Merge Queries",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Queries": {
+      "main": [
+        [
+          {
+            "node": "Generar Reporte API (Python)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar Reporte API (Python)": {
+      "main": [
+        [
+          {
+            "node": "Send a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        []
+      ]
+    },
+    "Send a document": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "aaa993c9-b210-4be7-8bfa-cdc9b7c5e145",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4d88d0eb76345967d2691c8578a550851889b97f41331db5ef68b93f2935d98b"
+  },
+  "nodeGroups": [],
+  "id": "uvvHwu7PEzYZ5dxU",
+  "tags": []
+}

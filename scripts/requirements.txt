@@ -3,3 +3,6 @@ pandas
 matplotlib
 supabase
 python-dotenv
+fastapi
+uvicorn
+

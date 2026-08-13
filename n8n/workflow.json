@@ -1,5 +1,5 @@
 {
-  "name": "Generador de Reportes Inmobiliarios (Avanzado)",
+  "name": "Generador de Reportes Inmobiliarios (Easypanel HTTP API)",
   "nodes": [
     {
       "parameters": {
@@ -55,7 +55,7 @@
     {
       "parameters": {
         "mode": "combine",
-        "combineBy": "multiplex"
+        "combineBy": "mergeByPosition"
       },
       "id": "4-merge-node",
       "name": "Merge Queries",
@@ -68,12 +68,15 @@
     },
     {
       "parameters": {
-        "command": "python scripts/generar_reporte.py"
+        "method": "POST",
+        "url": "http://reportes-api:8000/generar-reporte",
+        "responseFormat": "file",
+        "outputPropertyName": "reporte_pdf"
       },
-      "id": "5-execute-python",
-      "name": "Ejecutar Python",
-      "type": "n8n-nodes-base.executeCommand",
-      "typeVersion": 1,
+      "id": "5-http-request-python",
+      "name": "Generar Reporte API (Python)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
       "position": [
         600,
         300
@@ -81,80 +84,31 @@
     },
     {
       "parameters": {
-        "filePath": "examples/reporte_ejemplo.pdf",
-        "dataPropertyName": "reporte_pdf"
-      },
-      "id": "6-read-binary",
-      "name": "Read PDF",
-      "type": "n8n-nodes-base.readBinaryFile",
-      "typeVersion": 1,
-      "position": [
-        800,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "boolean": [
-            {
-              "value1": "={{ $json.exitCode }}",
-              "value2": 0
-            }
-          ]
-        }
-      },
-      "id": "7-if-node",
-      "name": "¿Sin errores?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [
-        1000,
-        300
-      ]
-    },
-    {
-      "parameters": {
         "sendTo": "gerencia@inmobiliaria.com",
         "subject": "Reporte Semanal de Ventas y Leads",
-        "message": "Adjunto el reporte semanal automatizado.",
+        "message": "Adjunto el reporte semanal automatizado de la inmobiliaria.",
         "attachments": "reporte_pdf"
       },
       "id": "8b-send-email-success",
-      "name": "Enviar Reporte",
+      "name": "Enviar Reporte Email",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2,
       "position": [
-        1200,
+        850,
         200
       ]
     },
     {
       "parameters": {
-        "sendTo": "it@inmobiliaria.com",
-        "subject": "Error en Automatización de Reportes",
-        "message": "={{ $json.stderr }}"
-      },
-      "id": "8a-send-email-error",
-      "name": "Alerta Error",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2,
-      "position": [
-        1200,
-        400
-      ]
-    },
-    {
-      "parameters": {
         "channel": "reportes-ventas",
-        "text": "Reporte semanal enviado ✅"
+        "text": "Reporte semanal inmobiliario generado y enviado por correo exitosamente ✅"
       },
       "id": "9-slack-notify",
       "name": "Notificación Slack",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.1,
       "position": [
-        1400,
+        1100,
         200
       ]
     }
@@ -202,54 +156,25 @@
       "main": [
         [
           {
-            "node": "Ejecutar Python",
+            "node": "Generar Reporte API (Python)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Ejecutar Python": {
+    "Generar Reporte API (Python)": {
       "main": [
         [
           {
-            "node": "Read PDF",
+            "node": "Enviar Reporte Email",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Read PDF": {
-      "main": [
-        [
-          {
-            "node": "¿Sin errores?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "¿Sin errores?": {
-      "main": [
-        [
-          {
-            "node": "Enviar Reporte",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Alerta Error",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Enviar Reporte": {
+    "Enviar Reporte Email": {
       "main": [
         [
           {

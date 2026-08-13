@@ -36,3 +36,13 @@ CREATE TABLE IF NOT EXISTS ventas (
     valor_final NUMERIC(15, 2) NOT NULL,
     asesor VARCHAR(100) NOT NULL
 );
+
+-- Permisos para que la API de Supabase (rol anon / public) pueda insertar y consultar datos
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, postgres;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, postgres;
+
+ALTER TABLE propiedades DISABLE ROW LEVEL SECURITY;
+ALTER TABLE clientes DISABLE ROW LEVEL SECURITY;
+ALTER TABLE leads DISABLE ROW LEVEL SECURITY;
+ALTER TABLE ventas DISABLE ROW LEVEL SECURITY;
+

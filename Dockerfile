@@ -19,6 +19,8 @@ COPY . .
 # Crear carpeta para PDFs generados
 RUN mkdir -p examples
 
-EXPOSE 8000
+ENV PORT=80
+EXPOSE 80
 
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${PORT:-80}"]
+

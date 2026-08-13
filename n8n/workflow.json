@@ -1,0 +1,273 @@
+{
+  "name": "Generador de Reportes Inmobiliarios (Avanzado)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "id": "1-schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT estado, COUNT(*) as cantidad FROM leads WHERE fecha >= current_date - interval '7 days' GROUP BY estado;"
+      },
+      "id": "2-postgres-leads",
+      "name": "Query Leads Semana",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.1,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT estado, COUNT(*) as cantidad, AVG(precio) as precio_promedio FROM propiedades GROUP BY estado;"
+      },
+      "id": "3-postgres-propiedades",
+      "name": "Query Propiedades",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.1,
+      "position": [
+        200,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "multiplex"
+      },
+      "id": "4-merge-node",
+      "name": "Merge Queries",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "python scripts/generar_reporte.py"
+      },
+      "id": "5-execute-python",
+      "name": "Ejecutar Python",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "filePath": "examples/reporte_ejemplo.pdf",
+        "dataPropertyName": "reporte_pdf"
+      },
+      "id": "6-read-binary",
+      "name": "Read PDF",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        800,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.exitCode }}",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "7-if-node",
+      "name": "¿Sin errores?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "gerencia@inmobiliaria.com",
+        "subject": "Reporte Semanal de Ventas y Leads",
+        "message": "Adjunto el reporte semanal automatizado.",
+        "attachments": "reporte_pdf"
+      },
+      "id": "8b-send-email-success",
+      "name": "Enviar Reporte",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "it@inmobiliaria.com",
+        "subject": "Error en Automatización de Reportes",
+        "message": "={{ $json.stderr }}"
+      },
+      "id": "8a-send-email-error",
+      "name": "Alerta Error",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "channel": "reportes-ventas",
+        "text": "Reporte semanal enviado ✅"
+      },
+      "id": "9-slack-notify",
+      "name": "Notificación Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1400,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Query Leads Semana",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Query Propiedades",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Leads Semana": {
+      "main": [
+        [
+          {
+            "node": "Merge Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Propiedades": {
+      "main": [
+        [
+          {
+            "node": "Merge Queries",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Queries": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Python",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar Python": {
+      "main": [
+        [
+          {
+            "node": "Read PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read PDF": {
+      "main": [
+        [
+          {
+            "node": "¿Sin errores?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Sin errores?": {
+      "main": [
+        [
+          {
+            "node": "Enviar Reporte",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alerta Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Reporte": {
+      "main": [
+        [
+          {
+            "node": "Notificación Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p",
+  "tags": []
+}

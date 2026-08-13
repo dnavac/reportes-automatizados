@@ -1,0 +1,29 @@
+# Environment variables / Credentials
+.env
+.env.local
+*.env
+
+# SQLite local database
+*.db
+*.sqlite
+*.sqlite3
+database/*.db
+
+# Generated PDF reports
+*.pdf
+reporte_inmobiliario.pdf
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+.venv/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

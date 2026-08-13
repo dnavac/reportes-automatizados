@@ -1,0 +1,249 @@
+{
+  "name": "Generador de Reportes Inmobiliarios (Easypanel HTTP API)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "id": "d43d3aae-d829-40d5-9f52-6d62fe3f8523",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        1072,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT estado, COUNT(*) as cantidad FROM leads WHERE fecha >= current_date - interval '7 days' GROUP BY estado;",
+        "options": {}
+      },
+      "id": "a08e363d-f367-4bbb-a48a-fda3ae5c8b13",
+      "name": "Query Leads Semana",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.1,
+      "position": [
+        1280,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT estado, COUNT(*) as cantidad, AVG(precio) as precio_promedio FROM propiedades GROUP BY estado;",
+        "options": {}
+      },
+      "id": "d251af16-1c95-464f-b42e-d39238183aa2",
+      "name": "Query Propiedades",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.1,
+      "position": [
+        1280,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT asesor, COUNT(*) AS ventas, SUM(valor_final) AS total_vendido\nFROM ventas\nWHERE fecha_cierre >= current_date - interval '7 days'\nGROUP BY asesor\nORDER BY ventas DESC\nLIMIT 1;",
+        "options": {}
+      },
+      "id": "e213b68d-caeb-4f29-affc-4c7fdc61ba55",
+      "name": "Query Top Agente",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.1,
+      "position": [
+        1280,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "id": "ae99fd5d-a8a0-4c32-897a-1e132150fb3a",
+      "name": "Merge Consultas",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1568,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "f8e5eb0e-13c3-4a92-b0c1-15b33c988b56",
+      "name": "Aggregate",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1808,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n-python-flask-api.tarlth.easypanel.host/generar-reporte",
+        "options": {}
+      },
+      "id": "1df26663-3f85-44a5-aaad-1480ae89fb3a",
+      "name": "Generar Reporte API (Python)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2032,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "sendDocument",
+        "binaryData": true,
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2272,
+        656
+      ],
+      "id": "f4beba31-0465-4e13-9d5c-6d8ae6b4c9c6",
+      "name": "Send Telegram Document"
+    },
+    {
+      "parameters": {
+        "text": "=Reporte generado desde el {{ $now.minus({ days: 7 }).setLocale('es').toFormat(\"d 'de' MMMM 'de' yyyy\") }} hasta el {{ $now.setLocale('es').toFormat(\"d 'de' MMMM 'de' yyyy\") }}\n\n🏆 Agente destacado: {{ $('Query Top Agente').first().json.asesor }} ({{ $('Query Top Agente').first().json.ventas }} ventas)",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2512,
+        656
+      ],
+      "id": "2f36d903-fbde-488d-8cac-9efd2a95753a",
+      "name": "Send Telegram Text"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Query Leads Semana",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Query Propiedades",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Query Top Agente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Leads Semana": {
+      "main": [
+        [
+          {
+            "node": "Merge Consultas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Propiedades": {
+      "main": [
+        [
+          {
+            "node": "Merge Consultas",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Query Top Agente": {
+      "main": [
+        [
+          {
+            "node": "Merge Consultas",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge Consultas": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Generar Reporte API (Python)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar Reporte API (Python)": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Telegram Document": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
